@@ -935,23 +935,36 @@
                     return;
                 }
                 
+                const isForward = document.querySelector('input[name="direction"][value="forward"]').checked;
+                
                 // 计算最佳价格（最低的）
-                let bestPrice = results[0].endPrice;
-                for (let i = 1; i < results.length; i++) {
-                    if (results[i].endPrice < bestPrice) {
-                        bestPrice = results[i].endPrice;
+                // 正向计算中比较落地电价(endPrice)，反向计算中比较上网电价(startPrice)
+                let bestPrice;
+                if (document.querySelector('input[name="direction"][value="forward"]').checked) {
+                    bestPrice = results[0].endPrice;
+                    for (let i = 1; i < results.length; i++) {
+                        if (results[i].endPrice < bestPrice) {
+                            bestPrice = results[i].endPrice;
+                        }
+                    }
+                } else {
+                    bestPrice = results[0].startPrice;
+                    for (let i = 1; i < results.length; i++) {
+                        if (results[i].startPrice < bestPrice) {
+                            bestPrice = results[i].startPrice;
+                        }
                     }
                 }
                 
-                // 显示每个结果
-                for (let i = 0; i < results.length; i++) {
-                    const result = results[i];
-                    const isBestPrice = result.endPrice === bestPrice;
+                // 先创建一个函数用于生成结果卡片
+                function createResultCard(result, cardIndex) {
+                    const isBestPrice = document.querySelector('input[name="direction"][value="forward"]').checked ? 
+                                      result.endPrice === bestPrice : result.startPrice === bestPrice;
                     
                     // 创建结果卡片
                     const card = document.createElement('div');
                     card.className = 'result-card';
-                    card.id = `result-card-${i}`;
+                    card.id = `result-card-${cardIndex}`;
                     
                     // 卡片头部
                     const header = document.createElement('div');
@@ -977,7 +990,7 @@
                     const priceInfo = document.createElement('div');
                     priceInfo.className = 'price-info';
                     
-                    const isForward = document.querySelector('input[name="direction"][value="forward"]').checked;
+                    // 移除重复的isForward变量定义
                     
                     // 起始价格
                     const startItem = document.createElement('div');
@@ -1018,24 +1031,71 @@
                         priceInfo.appendChild(envItem);
                     }
                     
-                    // 最终价格
-                    const endItem = document.createElement('div');
-                    endItem.className = 'info-item';
-                    const endLabel = document.createElement('span');
-                    endLabel.className = 'info-label';
-                    endLabel.textContent = isForward ? '落地电价' : '上网电价';
-                    const endValue = document.createElement('span');
-                    endValue.className = 'info-value';
-                    endValue.style.color = isBestPrice ? '#27ae60' : '#2c3e50';
-                    endValue.style.fontSize = '18px';
-                    endValue.textContent = `${result.endPrice.toFixed(2)} 元/MWh`;
-                    endItem.appendChild(endLabel);
-                    endItem.appendChild(endValue);
-                    
-                    // 添加信息项到价格信息容器
-                    priceInfo.appendChild(startItem);
-                    priceInfo.appendChild(transmissionItem);
-                    priceInfo.appendChild(endItem);
+                    // 在反向计算模式下的显示逻辑
+                if (!document.querySelector('input[name="direction"][value="forward"]').checked) {
+                        // 上网电价（迭代计算得出）
+                        const startItem = document.createElement('div');
+                        startItem.className = 'info-item';
+                        const startLabel = document.createElement('span');
+                        startLabel.className = 'info-label';
+                        startLabel.textContent = '上网电价';
+                        const startValue = document.createElement('span');
+                        startValue.className = 'info-value';
+                        startValue.style.color = isBestPrice ? '#27ae60' : '#2c3e50';
+                        startValue.style.fontSize = '18px';
+                        startValue.textContent = `${result.startPrice.toFixed(2)} 元/MWh`;
+                        startItem.appendChild(startLabel);
+                        startItem.appendChild(startValue);
+                        
+                        // 落地电价（用户输入）
+                        const endItem = document.createElement('div');
+                        endItem.className = 'info-item';
+                        const endLabel = document.createElement('span');
+                        endLabel.className = 'info-label';
+                        endLabel.textContent = '落地电价';
+                        const endValue = document.createElement('span');
+                        endValue.className = 'info-value';
+                        endValue.textContent = `${result.endPrice.toFixed(2)} 元/MWh`;
+                        endItem.appendChild(endLabel);
+                        endItem.appendChild(endValue);
+                        
+                        // 输电及线损
+                        const transmissionItem = document.createElement('div');
+                        transmissionItem.className = 'info-item';
+                        const transmissionLabel = document.createElement('span');
+                        transmissionLabel.className = 'info-label';
+                        transmissionLabel.textContent = '输电及线损';
+                        const transmissionValue = document.createElement('span');
+                        transmissionValue.className = 'info-value';
+                        transmissionValue.textContent = `${result.totalTransmissionAndLoss.toFixed(2)} 元/MWh`;
+                        transmissionItem.appendChild(transmissionLabel);
+                        transmissionItem.appendChild(transmissionValue);
+                        
+                        // 添加信息项到价格信息容器（只添加这三个，不添加重复的价格）
+                        priceInfo.appendChild(startItem);
+                        priceInfo.appendChild(transmissionItem);
+                        priceInfo.appendChild(endItem);
+                    } else {
+                        // 正向计算模式保持原逻辑
+                        // 添加信息项到价格信息容器
+                        priceInfo.appendChild(startItem);
+                        priceInfo.appendChild(transmissionItem);
+                        
+                        // 最终价格（落地电价）
+                        const endItem = document.createElement('div');
+                        endItem.className = 'info-item';
+                        const endLabel = document.createElement('span');
+                        endLabel.className = 'info-label';
+                        endLabel.textContent = '落地电价';
+                        const endValue = document.createElement('span');
+                        endValue.className = 'info-value';
+                        endValue.style.color = isBestPrice ? '#27ae60' : '#2c3e50';
+                        endValue.style.fontSize = '18px';
+                        endValue.textContent = `${result.endPrice.toFixed(2)} 元/MWh`;
+                        endItem.appendChild(endLabel);
+                        endItem.appendChild(endValue);
+                        priceInfo.appendChild(endItem);
+                    }
                     
                     card.appendChild(priceInfo);
                     
@@ -1043,11 +1103,11 @@
                     const detailsBtn = document.createElement('button');
                     detailsBtn.className = 'details-button';
                     detailsBtn.textContent = '查看详情';
-                    detailsBtn.setAttribute('data-card-id', i);
+                    detailsBtn.setAttribute('data-card-id', cardIndex);
                     
                     // 详情表格容器
                     const detailsContainer = document.createElement('div');
-                    detailsContainer.id = `details-${i}`;
+                    detailsContainer.id = `details-${cardIndex}`;
                     detailsContainer.className = 'details-container';
                     
                     // 创建详情表格
@@ -1076,7 +1136,8 @@
                     // 表格主体
                     const tbody = document.createElement('tbody');
                     
-                    // 添加每个环节的详情
+                    // 添加每个环节的详情（保持送端→受端顺序）
+                    console.log(`路径 ${result.send} → ${result.receive} 的环节明细顺序:`, result.segmentDetails.map(s => s.name));
                     for (let j = 0; j < result.segmentDetails.length; j++) {
                         const segment = result.segmentDetails[j];
                         const row = document.createElement('tr');
@@ -1123,7 +1184,54 @@
                     card.appendChild(detailsBtn);
                     card.appendChild(detailsContainer);
                     
-                    // 添加卡片到容器
+                    return card;
+                }
+                
+                // 先添加最佳价格卡片到容器顶部
+                let cardIndex = 0;
+                let bestPriceAdded = false;
+                
+                // 首先找到并添加最佳价格卡片
+                for (let i = 0; i < results.length; i++) {
+                    const result = results[i];
+                    const isBestPrice = document.querySelector('input[name="direction"][value="forward"]').checked ? 
+                                       result.endPrice === bestPrice : result.startPrice === bestPrice;
+                    
+                    if (isBestPrice) {
+                        const bestCard = createResultCard(result, cardIndex++);
+                        resultsContainer.appendChild(bestCard);
+                        bestPriceAdded = true;
+                        // 只添加第一个最佳价格卡片（可能有多个相同价格的结果）
+                        break;
+                    }
+                }
+                
+                // 收集所有非最佳价格结果
+                const nonBestResults = [];
+                for (let i = 0; i < results.length; i++) {
+                    const result = results[i];
+                    const isBestPrice = document.querySelector('input[name="direction"][value="forward"]').checked ? 
+                                       result.endPrice === bestPrice : result.startPrice === bestPrice;
+                    
+                    if (!isBestPrice) {
+                        nonBestResults.push(result);
+                    }
+                }
+                
+                // 对非最佳价格结果按照价格从低到高排序
+                nonBestResults.sort((a, b) => {
+                    if (document.querySelector('input[name="direction"][value="forward"]').checked) {
+                        // 正向计算按落地电价排序
+                        return a.endPrice - b.endPrice;
+                    } else {
+                        // 反向计算按上网电价排序
+                        return a.startPrice - b.startPrice;
+                    }
+                });
+                
+                // 添加排序后的非最佳价格卡片
+                for (let i = 0; i < nonBestResults.length; i++) {
+                    const card = createResultCard(nonBestResults[i], cardIndex++);
                     resultsContainer.appendChild(card);
                 }
                 
@@ -1320,43 +1428,92 @@
                     endPrice = currentPrice + environmentalValue;
                 } else {
                     // 反向计算：落地价 -> 上网价
-                    endPrice = inputPrice;
-                    let currentPrice = inputPrice - environmentalValue;
+                    const L = inputPrice; // L = 用户输入的落地电价（常数）
                     
-                    // 从后往前遍历所有环节
-                    for (let j = route.segments.length - 1; j >= 0; j--) {
+                    // 使用固定点迭代法求解非线性方程 X + 输电及线损(X) = L
+                    let X = L; // 初始猜测：上网价 = 落地价（不考虑损耗）
+                    const tolerance = 0.01; // 收敛精度
+                    const maxIterations = 100; // 最大迭代次数
+                    const relaxationFactor = 0.8; // 松弛因子，加速收敛
+                    let iteration = 0;
+                    let error = Infinity;
+                    
+                    // 迭代求解
+                    while (error > tolerance && iteration < maxIterations) {
+                        // 初始化计算落地价的变量
+                        
+                        // 正向遍历所有环节（保持原始顺序）计算落地价
+                        let cumulativePrice = X; // 累积价格，初始为上网价X
+                        calculatedLandingPrice = X; // 初始为上网价
+                        
+                        for (let j = 0; j < route.segments.length; j++) {
+                            const segment = route.segments[j];
+                            if (!segment) continue;
+                            
+                            const transmissionPrice = parseFloat(segment.price) || 0;
+                            const lossRate = parseFloat(segment.lossRate || segment.loss_rate || 0);
+                            
+                            let lossDiscount = 0;
+                            if (lossRate > 0) {
+                                // 严格按照公式计算：(累积价格 × lossRate) / (1 − lossRate)
+                                lossDiscount = cumulativePrice * lossRate / (1 - lossRate);
+                            }
+                            
+                            // 累计电价更新：累计电价 += price_i + 线损折价_i
+                            calculatedLandingPrice += transmissionPrice + lossDiscount;
+                            // 更新累积价格，用于下一个环节的线损折价计算
+                            cumulativePrice += transmissionPrice + lossDiscount;
+                        }
+                        
+                        // 计算误差：|估计落地价 − L| < 0.01
+                        error = Math.abs(calculatedLandingPrice - L);
+                        
+                        // 使用松弛因子更新X，加速收敛
+                        // X_new = X_old + 松弛因子 * (L - (calculatedLandingPrice - X_old))
+                        // 公式简化：L = X + 输电及线损(X)，所以 X_new = X_old + 松弛因子 * (L - calculatedLandingPrice)
+                        X = X + relaxationFactor * (L - calculatedLandingPrice);
+                        
+                        iteration++;
+                    }
+                    
+                    console.log(`反向计算迭代完成：${iteration}次迭代，误差=${error.toFixed(4)}，求得上网价X=${X.toFixed(4)}`);
+                    
+                    // 设置正确的价格变量
+                    startPrice = X; // 求得的上网电价
+                    endPrice = L; // 用户输入的落地电价
+                    
+                    // 重新正向遍历计算各环节线损详情用于展示
+                    let cumulativePrice = X; // 累积价格，初始为上网价X
+                    totalTransmissionAndLoss = 0;
+                    
+                    for (let j = 0; j < route.segments.length; j++) {
                         const segment = route.segments[j];
                         if (!segment) continue;
                         
-                        // 计算输电价
                         const transmissionPrice = parseFloat(segment.price) || 0;
-                        
-                        // 计算线损率 - 支持驼峰命名lossRate和下划线命名loss_rate
                         const lossRate = parseFloat(segment.lossRate || segment.loss_rate || 0);
                         
-                        // 更新当前价格（减去输电价）
-                        currentPrice -= transmissionPrice;
-                        
-                        // 计算线损折价（反向计算）
                         let lossDiscount = 0;
                         if (lossRate > 0) {
-                            lossDiscount = currentPrice * lossRate;
+                            // 严格按照公式计算：(累积价格 × lossRate) / (1 − lossRate)
+                            lossDiscount = cumulativePrice * lossRate / (1 - lossRate);
                         }
                         
-                        // 保存环节详情
+                        // 保存环节详情（保持送端→受端顺序）
                         segmentDetails.push({
                             name: segment.name || `环节${j+1}`,
                             price: transmissionPrice,
                             lossRate: lossRate,
                             lossDiscount: lossDiscount
                         });
+                        
+                        // 更新累计值
+                        totalTransmissionAndLoss += transmissionPrice + lossDiscount;
+                        // 更新累积价格，用于下一个环节的线损折价计算
+                        cumulativePrice += transmissionPrice + lossDiscount;
                     }
                     
-                    // 计算总输电及线损
-                    totalTransmissionAndLoss = endPrice - currentPrice - environmentalValue;
-                    
-                    // 最终上网价
-                    startPrice = currentPrice;
+                    // 环境价值仅在结果展示时使用，不参与方程求解
                 }
                 
                 // 确保数值精度
