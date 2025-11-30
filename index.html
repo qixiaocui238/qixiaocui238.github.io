@@ -760,7 +760,7 @@
                 document.getElementById('reset-button').addEventListener('click', handleReset);
             }
             
-            // 填充省份下拉框
+            // 填充省份下拉框并实现关联筛选功能
             function populateProvinceDropdowns() {
                 if (!routesData || routesData.length === 0) {
                     console.warn('没有数据可填充下拉框');
@@ -769,7 +769,6 @@
                 
                 // 使用Map保持顺序并去重
                 const sendProvinces = new Map();
-                const receiveProvinces = new Map();
                 
                 // 遍历数据提取省份，排除指定的receive字段
                 const excludedReceive = '黑龙江（辽吉'; // 要排除的落地省份
@@ -777,11 +776,7 @@
                     if (route.send && !sendProvinces.has(route.send)) {
                         sendProvinces.set(route.send, true);
                     }
-                    if (route.receive && !receiveProvinces.has(route.receive) && route.receive !== excludedReceive) {
-                        receiveProvinces.set(route.receive, true);
-                    }
                 });
-                console.log(`提取到的落地省份（已排除${excludedReceive}）:`, [...receiveProvinces.keys()]);
                 
                 // 获取下拉框元素
                 const sendSelect = document.getElementById('send-province');
@@ -799,15 +794,39 @@
                     sendSelect.appendChild(option);
                 });
                 
-                // 添加落地省份选项
-                receiveProvinces.forEach((_, province) => {
-                    const option = document.createElement('option');
-                    option.value = province;
-                    option.textContent = province;
-                    receiveSelect.appendChild(option);
-                });
+                console.log(`填充完成：${sendProvinces.size}个送出省份`);
                 
-                console.log(`填充完成：${sendProvinces.size}个送出省份，${receiveProvinces.size}个落地省份`);
+                // 添加送出省份变更事件监听器，实现关联筛选
+                sendSelect.addEventListener('change', function() {
+                    const selectedSendProvince = this.value;
+                    
+                    // 清空落地省份下拉框并添加默认选项
+                    receiveSelect.innerHTML = '<option value="">请选择落地省份</option>';
+                    
+                    if (selectedSendProvince) {
+                        // 使用Map保持顺序并去重，筛选与当前送出省份关联的落地省份
+                        const associatedReceiveProvinces = new Map();
+                        
+                        routesData.forEach(route => {
+                            if (route.send === selectedSendProvince && 
+                                route.receive && 
+                                route.receive !== excludedReceive && 
+                                !associatedReceiveProvinces.has(route.receive)) {
+                                associatedReceiveProvinces.set(route.receive, true);
+                            }
+                        });
+                        
+                        // 添加筛选后的落地省份选项
+                        associatedReceiveProvinces.forEach((_, province) => {
+                            const option = document.createElement('option');
+                            option.value = province;
+                            option.textContent = province;
+                            receiveSelect.appendChild(option);
+                        });
+                        
+                        console.log(`为${selectedSendProvince}筛选出${associatedReceiveProvinces.size}个落地省份`);
+                    }
+                });
             }
             
             // 处理表单提交
